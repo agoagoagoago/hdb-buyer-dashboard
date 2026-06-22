@@ -17,14 +17,18 @@ import { TimelineChecklist } from "@/components/dashboard/TimelineChecklist";
 import { DisclaimerPanel } from "@/components/dashboard/DisclaimerPanel";
 import { AssumptionsPanel } from "@/components/dashboard/AssumptionsPanel";
 import { useLocalStorage } from "@/lib/useLocalStorage";
-import { APP_TITLE, STORAGE_KEY, freshSampleState } from "@/lib/constants";
+import { APP_TITLE, STORAGE_KEY, freshSampleState, normalizeState } from "@/lib/constants";
 import { computeBuyerBreakdowns, computeLoanSummary } from "@/lib/hdbCalculations";
 import { estimateTotalGrants } from "@/lib/grantRules";
 import { estimateStampDuty } from "@/lib/stampDuty";
 import type { AppState } from "@/types/hdb";
 
 export default function DashboardPage() {
-  const [state, setState] = useLocalStorage<AppState>(STORAGE_KEY, freshSampleState());
+  const [state, setState] = useLocalStorage<AppState>(
+    STORAGE_KEY,
+    freshSampleState(),
+    normalizeState,
+  );
   const [tab, setTab] = React.useState("profile");
 
   const { household, flat, split, policy, timeline, includeStampDutyInCash } = state;

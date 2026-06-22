@@ -29,6 +29,7 @@ export function presentValueOfAnnuity(
   annualInterestRate: number,
   tenureYears: number,
 ): number {
+  if (!Number.isFinite(monthlyPayment) || !Number.isFinite(annualInterestRate)) return 0;
   if (monthlyPayment <= 0 || tenureYears <= 0) return 0;
   const n = tenureYears * 12;
   const r = annualInterestRate / 100 / 12;

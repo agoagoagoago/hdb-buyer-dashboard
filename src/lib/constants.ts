@@ -206,3 +206,55 @@ export const SAMPLE_STATE: AppState = {
 export function freshSampleState(): AppState {
   return structuredClone(SAMPLE_STATE);
 }
+
+type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
+
+function asArray<T>(value: unknown): T[] | undefined {
+  return Array.isArray(value) ? (value as T[]) : undefined;
+}
+
+/**
+ * Merge persisted (possibly older-schema) state over the current defaults so that fields added in
+ * later versions (e.g. MSR/TDSR/stress rates, monthly debts) are backfilled instead of arriving as
+ * `undefined` and producing NaN. Keeps the user's saved values where present.
+ */
+export function normalizeState(raw: unknown): AppState {
+  const d = SAMPLE_STATE;
+  const r = (raw ?? {}) as DeepPartial<AppState>;
+  const rh = r.household ?? {};
+  const rp = r.policy ?? {};
+  const rg = rp.grant ?? {};
+  const rs = rp.stampDuty ?? {};
+
+  const merged = {
+    household: {
+      ...d.household,
+      ...rh,
+      buyer1: { ...d.household.buyer1, ...(rh.buyer1 ?? {}) },
+      buyer2: { ...d.household.buyer2, ...(rh.buyer2 ?? {}) },
+    },
+    flat: { ...d.flat, ...(r.flat ?? {}) },
+    split: { ...d.split, ...(r.split ?? {}) },
+    policy: {
+      loan: { ...d.policy.loan, ...(rp.loan ?? {}) },
+      grant: {
+        ...d.policy.grant,
+        ...rg,
+        familyGrantScSc: { ...d.policy.grant.familyGrantScSc, ...(rg.familyGrantScSc ?? {}) },
+        familyGrantScSpr: { ...d.policy.grant.familyGrantScSpr, ...(rg.familyGrantScSpr ?? {}) },
+        ehgBands: asArray(rg.ehgBands) ?? d.policy.grant.ehgBands,
+      },
+      stampDuty: {
+        ...d.policy.stampDuty,
+        ...rs,
+        bsdBrackets: asArray(rs.bsdBrackets) ?? d.policy.stampDuty.bsdBrackets,
+        absd: { ...d.policy.stampDuty.absd, ...(rs.absd ?? {}) },
+      },
+    },
+    timeline: asArray(r.timeline) ?? d.timeline,
+    includeStampDutyInCash: r.includeStampDutyInCash ?? d.includeStampDutyInCash,
+  };
+
+  // Runtime shape is complete; cast satisfies the strict optional types from DeepPartial spreads.
+  return merged as AppState;
+}
