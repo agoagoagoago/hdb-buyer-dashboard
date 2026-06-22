@@ -6,8 +6,10 @@ import {
   calculateLoanShare,
   calculateMonthlyPayment,
   calculateTotalInterest,
+  computeBorrowingCapacity,
   computeBuyerBreakdowns,
   computeLoanSummary,
+  presentValueOfAnnuity,
   resolveSplitPercents,
 } from "@/lib/hdbCalculations";
 import { DEFAULT_POLICY, SAMPLE_STATE } from "@/lib/constants";
@@ -90,21 +92,64 @@ describe("resolveSplitPercents", () => {
   });
 });
 
+describe("presentValueOfAnnuity", () => {
+  it("is the inverse of calculateMonthlyPayment", () => {
+    const monthly = calculateMonthlyPayment(300000, 3, 30);
+    expect(presentValueOfAnnuity(monthly, 3, 30)).toBeCloseTo(300000, 2);
+  });
+  it("handles 0% interest", () => {
+    expect(presentValueOfAnnuity(1000, 0, 10)).toBeCloseTo(120000, 5);
+  });
+});
+
+describe("computeBorrowingCapacity", () => {
+  it("uses MSR only for HDB loans", () => {
+    const c = computeBorrowingCapacity(10500, 0, "HDB", 25, DEFAULT_POLICY.loan);
+    expect(c.msrMonthlyCap).toBe(3150); // 30% of 10,500
+    expect(c.monthlyRepaymentCap).toBe(3150);
+    expect(c.bindingRatio).toBe("MSR");
+    expect(c.stressRatePct).toBe(3.0);
+    expect(c.maxLoanFromIncome).toBeGreaterThan(655000);
+    expect(c.maxLoanFromIncome).toBeLessThan(672000);
+  });
+
+  it("lets TDSR bind a bank loan when other debts are high", () => {
+    const c = computeBorrowingCapacity(5000, 2000, "BANK", 25, DEFAULT_POLICY.loan);
+    expect(c.msrMonthlyCap).toBe(1500); // 30% of 5,000
+    expect(c.tdsrMonthlyCap).toBe(750); // 55% of 5,000 - 2,000
+    expect(c.monthlyRepaymentCap).toBe(750);
+    expect(c.bindingRatio).toBe("TDSR");
+  });
+});
+
 describe("computeLoanSummary", () => {
-  it("computes the HDB loan picture for the sample flat", () => {
-    const s = computeLoanSummary(SAMPLE_STATE.flat, DEFAULT_POLICY.loan);
+  const income = SAMPLE_STATE.household.buyer1.monthlyIncome +
+    SAMPLE_STATE.household.buyer2.monthlyIncome; // 10,500
+
+  it("computes the HDB loan picture for the sample flat (LTV binds)", () => {
+    const s = computeLoanSummary(SAMPLE_STATE.flat, DEFAULT_POLICY.loan, income, 0);
     expect(s.lowerOfPriceValuation).toBe(580000);
     expect(s.cashOverValuation).toBe(20000);
-    expect(s.maxLoan).toBe(435000); // 75% of 580k
+    expect(s.maxLoan).toBe(435000); // 75% of 580k; income supports more, so LTV binds
+    expect(s.bindingConstraint).toBe("LTV");
+    expect(s.ltvCappedLoan).toBe(435000);
+    expect(s.incomeCappedLoan).toBeGreaterThan(435000);
     expect(s.downpayment).toBe(165000); // 145k valued downpayment + 20k COV
     expect(s.downpaymentMinCash).toBe(20000); // HDB: only COV is forced cash
     expect(s.downpaymentCpfOrCash).toBe(145000);
     expect(s.monthlyInstalment).toBeCloseTo(1973.43, 1);
   });
 
+  it("caps the loan by income when income is low (MSR binds)", () => {
+    const s = computeLoanSummary(SAMPLE_STATE.flat, DEFAULT_POLICY.loan, 3000, 0);
+    expect(s.bindingConstraint).toBe("MSR");
+    expect(s.maxLoan).toBe(s.incomeCappedLoan);
+    expect(s.maxLoan).toBeLessThan(s.ltvCappedLoan);
+  });
+
   it("applies the bank min-cash rule", () => {
     const bankFlat: FlatInputs = { ...SAMPLE_STATE.flat, loanType: "BANK" };
-    const s = computeLoanSummary(bankFlat, DEFAULT_POLICY.loan);
+    const s = computeLoanSummary(bankFlat, DEFAULT_POLICY.loan, income, 0);
     // 5% of 580k = 29k min cash, plus 20k COV.
     expect(s.downpaymentMinCash).toBe(49000);
     expect(s.downpaymentCpfOrCash).toBe(116000);
@@ -113,7 +158,7 @@ describe("computeLoanSummary", () => {
 
 describe("computeBuyerBreakdowns", () => {
   it("splits loan responsibility by income ratio and sums to the total loan", () => {
-    const s = computeLoanSummary(SAMPLE_STATE.flat, DEFAULT_POLICY.loan);
+    const s = computeLoanSummary(SAMPLE_STATE.flat, DEFAULT_POLICY.loan, 10500, 0);
     const [b1, b2] = computeBuyerBreakdowns(SAMPLE_STATE.household, s, SAMPLE_STATE.split);
     expect(b1.loanResponsibility + b2.loanResponsibility).toBeCloseTo(s.maxLoan, 4);
     expect(b1.monthlyInstalmentShare + b2.monthlyInstalmentShare).toBeCloseTo(

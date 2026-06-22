@@ -20,6 +20,85 @@ export function calculateMonthlyPayment(
   return (principal * r * factor) / (factor - 1);
 }
 
+/**
+ * Present value of an annuity: the maximum loan whose monthly repayment equals `monthlyPayment`,
+ * at `annualInterestRate`% over `tenureYears`. Inverse of calculateMonthlyPayment.
+ */
+export function presentValueOfAnnuity(
+  monthlyPayment: number,
+  annualInterestRate: number,
+  tenureYears: number,
+): number {
+  if (monthlyPayment <= 0 || tenureYears <= 0) return 0;
+  const n = tenureYears * 12;
+  const r = annualInterestRate / 100 / 12;
+  if (r === 0) return monthlyPayment * n;
+  return (monthlyPayment * (1 - Math.pow(1 + r, -n))) / r;
+}
+
+export type BindingRatio = "MSR" | "TDSR";
+
+export interface BorrowingCapacity {
+  /** Gross monthly income used for this computation. */
+  grossMonthlyIncome: number;
+  /** Max monthly repayment allowed by MSR (30% of income). */
+  msrMonthlyCap: number;
+  /** Max monthly repayment allowed by TDSR (55% of income minus other debts). Bank loans only. */
+  tdsrMonthlyCap: number;
+  /** The binding monthly repayment cap actually applied. */
+  monthlyRepaymentCap: number;
+  /** Which ratio binds the monthly cap. */
+  bindingRatio: BindingRatio;
+  /** Stress-test rate used to size the loan from the monthly cap. */
+  stressRatePct: number;
+  /** Maximum loan supportable by income at the stress rate over the tenure. */
+  maxLoanFromIncome: number;
+}
+
+/**
+ * How much can be borrowed from income alone, via MSR/TDSR.
+ *
+ * - HDB loans are subject to MSR only (30%).
+ * - Bank loans (for HDB flats) are subject to the lower of MSR (30%) and TDSR (55% − other debts).
+ * The eligible loan is sized at the stress-test / medium-term rate, not the actual rate.
+ */
+export function computeBorrowingCapacity(
+  grossMonthlyIncome: number,
+  otherMonthlyDebts: number,
+  loanType: FlatInputs["loanType"],
+  tenureYears: number,
+  loan: LoanPolicyConfig,
+): BorrowingCapacity {
+  const income = Math.max(0, grossMonthlyIncome);
+  const msrMonthlyCap = loan.msr * income;
+  const tdsrMonthlyCap = Math.max(0, loan.tdsr * income - Math.max(0, otherMonthlyDebts));
+
+  // HDB loans: MSR only. Bank loans: lower of MSR and TDSR.
+  const isHdb = loanType === "HDB";
+  const monthlyRepaymentCap = isHdb
+    ? msrMonthlyCap
+    : Math.min(msrMonthlyCap, tdsrMonthlyCap);
+  const bindingRatio: BindingRatio =
+    isHdb || msrMonthlyCap <= tdsrMonthlyCap ? "MSR" : "TDSR";
+
+  const stressRatePct = isHdb ? loan.hdbStressRatePct : loan.bankStressRatePct;
+  const maxLoanFromIncome = presentValueOfAnnuity(
+    monthlyRepaymentCap,
+    stressRatePct,
+    tenureYears,
+  );
+
+  return {
+    grossMonthlyIncome: income,
+    msrMonthlyCap,
+    tdsrMonthlyCap,
+    monthlyRepaymentCap,
+    bindingRatio,
+    stressRatePct,
+    maxLoanFromIncome,
+  };
+}
+
 /** Total interest paid over the tenure = (monthly * months) - principal. */
 export function calculateTotalInterest(
   principal: number,
@@ -87,11 +166,22 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+export type LoanBindingConstraint = "LTV" | "MSR" | "TDSR";
+
 export interface LoanSummary {
   /** Higher of price/valuation drives BSD; lower drives the loan ceiling. */
   lowerOfPriceValuation: number;
   cashOverValuation: number;
+  /** Effective maximum loan = the lower of the LTV cap and the income cap. */
   maxLoan: number;
+  /** Maximum loan permitted by the LTV limit alone. */
+  ltvCappedLoan: number;
+  /** Maximum loan supportable by income (MSR/TDSR) alone. */
+  incomeCappedLoan: number;
+  /** Which limit actually binds the loan. */
+  bindingConstraint: LoanBindingConstraint;
+  /** Borrowing-capacity detail for the household income. */
+  capacity: BorrowingCapacity;
   /** Downpayment = price-related cost not covered by the loan (excludes COV double count). */
   downpayment: number;
   /** Portion of downpayment that must be cash (bank min-cash rule); 0 for HDB loans. */
@@ -109,12 +199,31 @@ export interface LoanSummary {
  * The loan ceiling is LTV × (lower of price/valuation). The buyer must fund the rest:
  * the downpayment on the valued portion plus any cash-over-valuation (always cash).
  */
-export function computeLoanSummary(flat: FlatInputs, loan: LoanPolicyConfig): LoanSummary {
+export function computeLoanSummary(
+  flat: FlatInputs,
+  loan: LoanPolicyConfig,
+  grossMonthlyIncome: number,
+  otherMonthlyDebts: number,
+): LoanSummary {
   const lower = Math.min(flat.resalePrice, flat.valuation);
   const cov = calculateCashOverValuation(flat.resalePrice, flat.valuation);
   const ltvUsed = flat.loanType === "HDB" ? loan.hdbLtv : loan.bankLtv;
 
-  const maxLoan = Math.max(0, lower * ltvUsed);
+  const ltvCappedLoan = Math.max(0, lower * ltvUsed);
+  const capacity = computeBorrowingCapacity(
+    grossMonthlyIncome,
+    otherMonthlyDebts,
+    flat.loanType,
+    flat.tenureYears,
+    loan,
+  );
+  const incomeCappedLoan = capacity.maxLoanFromIncome;
+
+  // The realistic loan is the lower of the LTV cap and the income (MSR/TDSR) cap.
+  const maxLoan = Math.min(ltvCappedLoan, incomeCappedLoan);
+  const bindingConstraint: LoanBindingConstraint =
+    incomeCappedLoan < ltvCappedLoan ? capacity.bindingRatio : "LTV";
+
   // Downpayment on the valued portion (the part the loan does not cover).
   const downpaymentOnValuation = Math.max(0, lower - maxLoan);
 
@@ -135,6 +244,10 @@ export function computeLoanSummary(flat: FlatInputs, loan: LoanPolicyConfig): Lo
     lowerOfPriceValuation: lower,
     cashOverValuation: cov,
     maxLoan,
+    ltvCappedLoan,
+    incomeCappedLoan,
+    bindingConstraint,
+    capacity,
     // Total downpayment the buyer funds = valued-portion downpayment + cash-over-valuation.
     downpayment: downpaymentOnValuation + cov,
     downpaymentMinCash: downpaymentMinCash + cov, // COV is always cash

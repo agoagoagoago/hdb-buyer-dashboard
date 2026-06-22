@@ -28,6 +28,10 @@ export const DEFAULT_POLICY: PolicyConfig = {
     hdbLtv: 0.75,
     bankLtv: 0.75,
     bankMinCashFraction: 0.05,
+    msr: 0.3,
+    tdsr: 0.55,
+    hdbStressRatePct: 3.0,
+    bankStressRatePct: 4.0,
   },
   grant: {
     familyGrantScSc: { smallFlat: 80000, largeFlat: 50000 },
@@ -177,6 +181,7 @@ export const SAMPLE_STATE: AppState = {
     firstTimerStatus: "BOTH_FIRST",
     proximity: "NONE",
     sprWillBecomeSc: false,
+    monthlyDebtObligations: 0,
   },
   flat: {
     resalePrice: 600000,

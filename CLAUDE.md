@@ -50,7 +50,9 @@ compute money — they format and display.** Add a unit test for every new lib f
   rates live here** so they can be changed without touching logic.
 - `src/lib/hdbCalculations.ts` — loan math: `calculateMonthlyPayment`, `calculateTotalInterest`,
   `calculateCashOverValuation`, `calculateIncomeRatioSplit`, `calculateLoanShare`,
-  `calculateCPFUsage`, `resolveSplitPercents`, `computeLoanSummary`, `computeBuyerBreakdowns`.
+  `calculateCPFUsage`, `resolveSplitPercents`, `presentValueOfAnnuity`, `computeBorrowingCapacity`
+  (MSR/TDSR income cap), `computeLoanSummary` (maxLoan = min(LTV cap, income cap)),
+  `computeBuyerBreakdowns`.
 - `src/lib/grantRules.ts` — `estimateFamilyGrant`, `estimateCitizenTopUp`, `estimateProximityGrant`,
   `estimateEHG`, `estimateTotalGrants`, `buildGrantWarnings`.
 - `src/lib/stampDuty.ts` — `calculateBsd`, `absdRateFor`, `estimateStampDuty` (dashboard card) and
@@ -74,6 +76,9 @@ estimateStampDuty)` → passed as props to dashboard components → formatted fo
 
 - **LTV**: HDB & bank 75%; bank assumes 5% minimum cash downpayment. Cash-over-valuation (price −
   valuation) is always cash.
+- **Income cap (MSR/TDSR)**: HDB loans MSR 30% only; bank loans lower of MSR 30% / TDSR 55% (− other
+  debts). Loan sized at a stress-test rate (HDB 3%, bank 4%). Effective max loan = min(LTV, income).
+  Surfaced in `BorrowingCapacity.tsx` (Buyer 1 / Buyer 2 / combined) in the Loan tab.
 - **Family Grant** (first-timers): SC+SC $80k (2–4 room)/$50k (5-room+); SC+SPR $70k/$40k.
 - **Citizen Top-Up** $10k: SC+SPR family with an SC child, or if the SPR spouse intends to become SC.
 - **Proximity** $30k (living with parents) / $20k (within 4km) / $0.
@@ -101,5 +106,5 @@ These change with policy — surfaced as editable config and called out in `READ
 
 ## Not yet built (future work)
 
-MSR/TDSR affordability checks, second-timer resale levy, HFE-driven eligibility gating, scenario
+Second-timer resale levy, HFE-driven eligibility gating, age/lease-based tenure limits, scenario
 save/compare + PDF export, CPF OA projection over tenure, dark theme/i18n, component-level tests.

@@ -9,6 +9,7 @@ import { HouseholdProfileForm } from "@/components/dashboard/HouseholdProfileFor
 import { FlatDetailsForm } from "@/components/dashboard/FlatDetailsForm";
 import { GrantEstimator } from "@/components/dashboard/GrantEstimator";
 import { LoanCalculator } from "@/components/dashboard/LoanCalculator";
+import { BorrowingCapacity } from "@/components/dashboard/BorrowingCapacity";
 import { StampDutyCard } from "@/components/dashboard/StampDutyCard";
 import { BuyerContributionTable } from "@/components/dashboard/BuyerContributionTable";
 import { LoanSummaryCards } from "@/components/dashboard/LoanSummaryCards";
@@ -35,9 +36,11 @@ export default function DashboardPage() {
     () => estimateTotalGrants(household, flat, policy.grant),
     [household, flat, policy.grant],
   );
+  const householdIncome = household.buyer1.monthlyIncome + household.buyer2.monthlyIncome;
   const loanSummary = React.useMemo(
-    () => computeLoanSummary(flat, policy.loan),
-    [flat, policy.loan],
+    () =>
+      computeLoanSummary(flat, policy.loan, householdIncome, household.monthlyDebtObligations),
+    [flat, policy.loan, householdIncome, household.monthlyDebtObligations],
   );
   const breakdowns = React.useMemo(
     () => computeBuyerBreakdowns(household, loanSummary, split),
@@ -51,7 +54,6 @@ export default function DashboardPage() {
   const totalDownpaymentCash = breakdowns.reduce((sum, b) => sum + b.cashNeeded, 0);
   const cashNeededUpfront =
     totalDownpaymentCash + (includeStampDutyInCash ? stampDuty.total : 0);
-  const householdIncome = household.buyer1.monthlyIncome + household.buyer2.monthlyIncome;
 
   const summaryData = {
     totalGrants: grantResult.total,
@@ -127,6 +129,19 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="loan" className="space-y-4">
+          <BorrowingCapacity
+            buyer1Name={household.buyer1.name}
+            buyer2Name={household.buyer2.name}
+            buyer1Income={household.buyer1.monthlyIncome}
+            buyer2Income={household.buyer2.monthlyIncome}
+            otherDebts={household.monthlyDebtObligations}
+            onOtherDebtsChange={(monthlyDebtObligations) =>
+              update("household", { ...household, monthlyDebtObligations })
+            }
+            flat={flat}
+            loan={policy.loan}
+            ltvCappedLoan={loanSummary.ltvCappedLoan}
+          />
           <LoanCalculator
             flat={flat}
             loanPolicy={policy.loan}

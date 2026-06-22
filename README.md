@@ -32,6 +32,7 @@ couple with children) to estimate:
 | Household Profile | Both buyers (citizenship, income, CPF OA, age), children, first-timer status, proximity to parents |
 | Flat Details | Resale price, valuation, flat type, lease, loan type, interest rate, tenure, property count |
 | Grant Estimator | Family/CPF Housing Grant, EHG, Proximity Grant, Citizen Top-Up + eligibility warnings |
+| Borrowing Capacity | **How much you can borrow from income** via MSR/TDSR — Buyer 1 only, Buyer 2 only, and combined; max loan = min(LTV cap, income cap) |
 | Loan Calculator | Editable LTV/rate/tenure; loan, downpayment, CPF/cash, instalment, total interest |
 | Buyer Contribution | Per-buyer table with 50/50, income-ratio, or custom split modes |
 | Stamp Duty | BSD (progressive) + ABSD by citizenship/property count, with remission note |
@@ -88,6 +89,9 @@ All figures live in editable config (`src/lib/constants.ts` → `DEFAULT_POLICY`
 **Assumptions** tab at runtime — no code edits needed.
 
 - **LTV**: HDB & bank loans default to **75%**; bank loans assume a **5% minimum cash** downpayment.
+- **Income cap (MSR/TDSR)**: HDB loans limited by **MSR 30%**; bank loans by the lower of **MSR 30%**
+  and **TDSR 55%** (minus other debts). The eligible loan is sized at a **stress-test rate** (HDB 3%,
+  bank 4% by default). The displayed maximum loan is the **lower of the LTV cap and the income cap**.
 - **Cash-over-valuation** (price − valuation) must always be paid in cash.
 - **Family Grant** (first-timers): SC+SC = $80k (2–4 room) / $50k (5-room+); SC+SPR = $70k / $40k.
 - **Citizen Top-Up**: $10k for SC+SPR families with an SC child (or if the SPR spouse becomes an SC).
@@ -109,14 +113,13 @@ rules. Buyers should verify with HDB, CPF, their bank, and a licensed property a
 These change with policy — confirm the live figures and update them in the Assumptions tab:
 
 - Grant quantums, income ceilings, and EHG bands (HDB/CPF)
-- LTV limits and MSR/TDSR rules (HDB/MAS/lenders)
+- LTV limits, MSR/TDSR percentages, and the stress-test interest rates (HDB/MAS/lenders)
 - CPF usage rules and the impact of remaining lease on CPF/loan
 - BSD/ABSD rates and married-couple ABSD remission (IRAS)
 - HFE letter eligibility and resale levy for second-timers
 
 ## Future improvements
 
-- MSR/TDSR affordability checks against income and existing debt
 - Resale levy modelling for second-timers
 - HFE-driven eligibility gating and income-ceiling checks per grant
 - Save/compare multiple scenarios; export to PDF

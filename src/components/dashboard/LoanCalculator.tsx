@@ -120,7 +120,13 @@ export function LoanCalculator({
             <Row label="Valuation" value={formatCurrency(flat.valuation)} />
             <Row label="Lower of price / valuation" value={formatCurrency(summary.lowerOfPriceValuation)} />
             <Row label="Cash-over-valuation (cash only)" value={formatCurrency(summary.cashOverValuation)} />
-            <Row label={`Maximum loan (LTV ${formatPercent(summary.ltvUsed * 100, 0)})`} value={formatCurrency(summary.maxLoan)} strong />
+            <Row label={`Loan ceiling — LTV ${formatPercent(summary.ltvUsed * 100, 0)}`} value={formatCurrency(summary.ltvCappedLoan)} />
+            <Row label="Loan ceiling — income (MSR/TDSR)" value={formatCurrency(summary.incomeCappedLoan)} />
+            <Row
+              label={`Maximum loan (limited by ${summary.bindingConstraint})`}
+              value={formatCurrency(summary.maxLoan)}
+              strong
+            />
             <Row label="Downpayment required" value={formatCurrency(summary.downpayment)} />
             <Row label="— of which min cash" value={formatCurrency(summary.downpaymentMinCash)} />
             <Row label="— of which CPF OA / cash" value={formatCurrency(summary.downpaymentCpfOrCash)} />

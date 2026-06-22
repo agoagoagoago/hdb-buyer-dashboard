@@ -73,6 +73,59 @@ export function AssumptionsPanel({
           </div>
         </AccordionItem>
 
+        <AccordionItem title="Affordability (MSR / TDSR & stress rates)">
+          <p className="mb-3 text-xs text-muted-foreground">
+            Used to compute the income-based maximum loan. HDB loans use MSR only; bank loans use the
+            lower of MSR and TDSR. The loan is sized at the stress-test (medium-term) rate.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="MSR cap (%)" htmlFor="cfg-msr">
+              <NumberInput
+                id="cfg-msr"
+                value={Number((loan.msr * 100).toFixed(1))}
+                min={0}
+                max={100}
+                prefix="%"
+                onValueChange={(v) => onChange({ ...policy, loan: { ...loan, msr: v / 100 } })}
+              />
+            </Field>
+            <Field label="TDSR cap (%)" htmlFor="cfg-tdsr">
+              <NumberInput
+                id="cfg-tdsr"
+                value={Number((loan.tdsr * 100).toFixed(1))}
+                min={0}
+                max={100}
+                prefix="%"
+                onValueChange={(v) => onChange({ ...policy, loan: { ...loan, tdsr: v / 100 } })}
+              />
+            </Field>
+            <Field label="HDB stress rate (% p.a.)" htmlFor="cfg-hdb-stress">
+              <NumberInput
+                id="cfg-hdb-stress"
+                value={loan.hdbStressRatePct}
+                min={0}
+                max={20}
+                step="0.1"
+                prefix="%"
+                onValueChange={(v) => onChange({ ...policy, loan: { ...loan, hdbStressRatePct: v } })}
+              />
+            </Field>
+            <Field label="Bank stress rate (% p.a.)" htmlFor="cfg-bank-stress">
+              <NumberInput
+                id="cfg-bank-stress"
+                value={loan.bankStressRatePct}
+                min={0}
+                max={20}
+                step="0.1"
+                prefix="%"
+                onValueChange={(v) =>
+                  onChange({ ...policy, loan: { ...loan, bankStressRatePct: v } })
+                }
+              />
+            </Field>
+          </div>
+        </AccordionItem>
+
         <AccordionItem title="Grant amounts">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="SC+SC Family (2–4 room)" htmlFor="g1">

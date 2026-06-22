@@ -37,6 +37,8 @@ export interface HouseholdInputs {
   proximity: ProximityStatus;
   /** Whether the SPR spouse intends to take up citizenship (affects Citizen Top-Up). */
   sprWillBecomeSc: boolean;
+  /** Combined existing monthly debt repayments (car, personal loans, etc.) — used for TDSR. */
+  monthlyDebtObligations: number;
 }
 
 export interface FlatInputs {
@@ -66,6 +68,14 @@ export interface LoanPolicyConfig {
   bankLtv: number;
   /** Minimum cash portion of the downpayment for bank loans, as a fraction of price/valuation. */
   bankMinCashFraction: number;
+  /** Mortgage Servicing Ratio cap (fraction of gross monthly income), e.g. 0.30. */
+  msr: number;
+  /** Total Debt Servicing Ratio cap (fraction of gross monthly income), e.g. 0.55. Bank loans only. */
+  tdsr: number;
+  /** Stress-test / medium-term interest rate (% p.a.) used to compute the max HDB loan. */
+  hdbStressRatePct: number;
+  /** Stress-test / medium-term interest rate (% p.a.) used to compute the max bank loan. */
+  bankStressRatePct: number;
 }
 
 export interface EhgIncomeBand {
