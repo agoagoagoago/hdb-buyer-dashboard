@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { absdRateFor, calculateBsd, estimateStampDuty } from "@/lib/stampDuty";
+import { absdRateFor, assessAbsd, calculateBsd, estimateStampDuty } from "@/lib/stampDuty";
 import { DEFAULT_POLICY, SAMPLE_STATE } from "@/lib/constants";
 import type { HouseholdInputs } from "@/types/hdb";
 
@@ -48,5 +48,59 @@ describe("estimateStampDuty", () => {
     const r = estimateStampDuty(scsc, flat, cfg);
     expect(r.absd).toBe(0);
     expect(r.total).toBe(12600);
+  });
+});
+
+describe("assessAbsd", () => {
+  const input = {
+    dutiableValue: 600000,
+    buyer1: "SC" as const,
+    buyer2: "SPR" as const,
+    isMarried: true,
+    propertiesOwnedBefore: 0,
+    willSellFirstProperty: false,
+  };
+
+  it("grants full remission to a married SC+SPR couple on their first home", () => {
+    const r = assessAbsd(input, cfg);
+    expect(r.rate).toBe(0.05);
+    expect(r.grossAbsd).toBe(30000);
+    expect(r.remission).toBe("full");
+    expect(r.netAbsd).toBe(0);
+  });
+
+  it("does NOT remit if the couple is unmarried", () => {
+    const r = assessAbsd({ ...input, isMarried: false }, cfg);
+    expect(r.remission).toBe("none");
+    expect(r.netAbsd).toBe(30000);
+  });
+
+  it("flags a refund when a married SC couple buys a 2nd property and will sell the 1st", () => {
+    const r = assessAbsd(
+      { ...input, propertiesOwnedBefore: 1, willSellFirstProperty: true },
+      cfg,
+    );
+    expect(r.propertyCountAfter).toBe(2);
+    expect(r.remission).toBe("refund");
+    expect(r.netAbsd).toBe(r.grossAbsd); // still paid upfront
+  });
+
+  it("charges full ABSD for a single foreigner buyer", () => {
+    const r = assessAbsd(
+      { ...input, buyer1: "FOREIGNER", buyer2: "NONE", isMarried: false },
+      cfg,
+    );
+    expect(r.rate).toBe(0.6);
+    expect(r.remission).toBe("none");
+    expect(r.netAbsd).toBe(360000);
+  });
+
+  it("has zero ABSD for a single SC first-property buyer", () => {
+    const r = assessAbsd(
+      { ...input, buyer1: "SC", buyer2: "NONE", isMarried: false },
+      cfg,
+    );
+    expect(r.rate).toBe(0);
+    expect(r.netAbsd).toBe(0);
   });
 });

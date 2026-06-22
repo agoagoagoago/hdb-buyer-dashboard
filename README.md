@@ -39,6 +39,16 @@ couple with children) to estimate:
 | Timeline | 12 resale milestones with checkbox, date, and status |
 | Assumptions | **Every policy figure is editable** (LTV, grant amounts, EHG bands, BSD/ABSD rates) |
 
+### ABSD Calculator (`/absd`)
+
+A dedicated page (linked from the dashboard header) to estimate **Additional Buyer's Stamp Duty** for
+any buyer profile, with the **married-couple remission and refund cases highlighted**:
+
+- ABSD rate by buyer citizenship (SC / SPR / Foreigner) and number of properties owned.
+- **Full remission** — a married couple with ≥1 Singapore Citizen buying their first property jointly pays $0.
+- **Refund** — a married SC couple buying a second property may claim a refund if they sell their first in time.
+- Live "Applies to you" highlighting of the relevant remission case, plus a BSD figure and an ABSD rate reference table.
+
 ## Local setup
 
 ```bash

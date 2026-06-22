@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw, Home } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Receipt, RotateCcw, Home } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HouseholdProfileForm } from "@/components/dashboard/HouseholdProfileForm";
 import { FlatDetailsForm } from "@/components/dashboard/FlatDetailsForm";
@@ -79,14 +80,16 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setState(freshSampleState())}
-          className="shrink-0 self-start"
-        >
-          <RotateCcw className="h-4 w-4" />
-          Reset to sample
-        </Button>
+        <div className="flex shrink-0 flex-wrap gap-2 self-start">
+          <Link href="/absd" className={buttonVariants({ variant: "outline" })}>
+            <Receipt className="h-4 w-4" />
+            ABSD calculator
+          </Link>
+          <Button variant="outline" onClick={() => setState(freshSampleState())}>
+            <RotateCcw className="h-4 w-4" />
+            Reset to sample
+          </Button>
+        </div>
       </header>
 
       <div className="mb-6">
