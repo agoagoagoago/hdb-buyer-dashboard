@@ -30,11 +30,13 @@ function SummaryCard({
   label,
   value,
   accent,
+  note,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   accent?: string;
+  note?: string;
 }) {
   return (
     <Card className="p-4">
@@ -43,6 +45,7 @@ function SummaryCard({
         <Icon className={`h-4 w-4 shrink-0 ${accent ?? "text-primary"}`} />
       </div>
       <p className="mt-2 text-xl font-semibold tabular-nums tracking-tight">{value}</p>
+      {note && <p className="mt-1 text-[11px] leading-tight text-muted-foreground">{note}</p>}
     </Card>
   );
 }
@@ -54,7 +57,7 @@ export function LoanSummaryCards({ data }: { data: SummaryData }) {
       <SummaryCard icon={Banknote} label="Estimated total loan" value={formatCurrency(data.totalLoan)} />
       <SummaryCard icon={CalendarClock} label="Estimated monthly instalment" value={formatCurrencyPrecise(data.monthlyInstalment)} />
       <SummaryCard icon={Coins} label="Estimated cash-over-valuation" value={formatCurrency(data.cashOverValuation)} accent="text-amber-600" />
-      <SummaryCard icon={Wallet} label="Estimated cash needed upfront" value={formatCurrency(data.cashNeededUpfront)} accent="text-amber-600" />
+      <SummaryCard icon={Wallet} label="Estimated cash needed upfront" value={formatCurrency(data.cashNeededUpfront)} accent="text-amber-600" note="cash, after CPF OA applied" />
       <SummaryCard icon={HandCoins} label="Total loan responsibility" value={formatCurrency(data.totalLoan)} />
       <SummaryCard icon={User} label={`${data.buyer1Name} monthly share`} value={formatCurrencyPrecise(data.buyer1MonthlyShare)} />
       <SummaryCard icon={User} label={`${data.buyer2Name} monthly share`} value={formatCurrencyPrecise(data.buyer2MonthlyShare)} />
